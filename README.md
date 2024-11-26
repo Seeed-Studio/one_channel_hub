@@ -391,6 +391,22 @@ A JSON object as follows is expected:
 }
 ```
 
+## 3.8. Configure WiFi/LoRa through SenseCAP APP
+
+Build with:
+
+* Select Seeed XIAO ESP32S3 Gateway board
+* Modify the Flash size to 8 MB
+* Enable Get config from flash
+* Disable WIFI provisionning
+* Disable OLED Display
+
+Usage:
+
+* enable/disable config through user button
+* bluetooth broadcast name by "GW-XIAO-ESP32S3"
+* connect through SenseCAP APP and config Wifi/LoRa
+
 # 4. Known limitations
 
 * FSK modulation not supported

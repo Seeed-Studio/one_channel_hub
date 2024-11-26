@@ -328,29 +328,7 @@ static int parse_radio_configuration( void )
 
 static int parse_gateway_configuration( void )
 {
-    /* Gateway IF configuration (AUTO or CUSTOM) */
-#ifdef CONFIG_GATEWAY_ID_AUTO
-    /* format Gateway ID from MAC address for UDP protocol to LNS */
-    wifi_get_mac_address( wifi_mac_addr );
-    lgwm = ( ( uint64_t )( wifi_mac_addr[0] ) << 56 ) | ( ( uint64_t )( wifi_mac_addr[1] ) << 48 ) |
-           ( ( uint64_t )( wifi_mac_addr[2] ) << 40 ) | ( ( uint64_t )( 0xFF ) << 32 );
-    lgwm |= ( ( uint64_t )( 0xFE ) << 24 ) | ( ( uint64_t )( wifi_mac_addr[3] ) << 16 ) |
-            ( ( uint64_t )( wifi_mac_addr[4] ) << 8 ) | ( ( uint64_t )( wifi_mac_addr[5] ) << 0 );
-    ESP_LOGI( TAG_PKT_FWD, "Gateway ID is set to AUTO" );
-#else
-    size_t len;
-    if( ( len = strlen( CONFIG_GATEWAY_ID_CUSTOM ) ) != 16 )
-    { /* 16 chars for 8 bytes hex string */
-        ESP_LOGE( TAG_PKT_FWD, "Gateway ID length should be 8 bytes (current hexstring contains %d chars) - %s", len,
-                  CONFIG_GATEWAY_ID_CUSTOM );
-        return -1;
-    }
-    lgwm = ( uint64_t ) strtoull( CONFIG_GATEWAY_ID_CUSTOM, NULL, 16 );
-    ESP_LOGI( TAG_PKT_FWD, "Gateway ID is set to CUSTOM (%s)", CONFIG_GATEWAY_ID_CUSTOM );
-#endif
-    ESP_LOGI( TAG_PKT_FWD, "Gateway ID: 0x%08llX", lgwm );
-
-    ESP_LOGI( TAG_PKT_FWD, "INFO: Auto-quit after %lu non-acknowledged PULL_DATA\n", autoquit_threshold );
+    bool gw_id_empty = true;
 
     /* Configure LNS address and port from NVS */
 #ifdef CONFIG_GET_CFG_FROM_FLASH
@@ -369,6 +347,17 @@ static int parse_gateway_configuration( void )
     else
     {
         printf( "Done\n" );
+        
+        err = nvs_get_u64( my_handle, CFG_NVS_KEY_GW_ID, &lgwm );
+        if( err == ESP_OK )
+        {
+            gw_id_empty = false;
+            printf( "NVS -> %s = 0x%016llX\n", CFG_NVS_KEY_GW_ID, lgwm );
+        }
+        else
+        {
+            printf( "Failed to get %s from NVS - %s\n", CFG_NVS_KEY_GW_ID, esp_err_to_name( err ) );
+        }
 
         size_t size = sizeof( serv_addr );
         err         = nvs_get_str( my_handle, CFG_NVS_KEY_LNS_ADDRESS, serv_addr, &size );
@@ -397,6 +386,32 @@ static int parse_gateway_configuration( void )
     nvs_close( my_handle );
     printf( "Closed NVS handle for reading.\n" );
 #endif
+        /* Gateway IF configuration (AUTO or CUSTOM) */
+#ifdef CONFIG_GATEWAY_ID_AUTO
+    if( gw_id_empty )
+    {
+        /* format Gateway ID from MAC address for UDP protocol to LNS */
+        wifi_get_mac_address( wifi_mac_addr );
+        lgwm = ( ( uint64_t )( wifi_mac_addr[0] ) << 56 ) | ( ( uint64_t )( wifi_mac_addr[1] ) << 48 ) |
+            ( ( uint64_t )( wifi_mac_addr[2] ) << 40 ) | ( ( uint64_t )( 0xFF ) << 32 );
+        lgwm |= ( ( uint64_t )( 0xFE ) << 24 ) | ( ( uint64_t )( wifi_mac_addr[3] ) << 16 ) |
+                ( ( uint64_t )( wifi_mac_addr[4] ) << 8 ) | ( ( uint64_t )( wifi_mac_addr[5] ) << 0 );
+        ESP_LOGI( TAG_PKT_FWD, "Gateway ID is set to AUTO" );
+    }
+#else
+    size_t len;
+    if( ( len = strlen( CONFIG_GATEWAY_ID_CUSTOM ) ) != 16 )
+    { /* 16 chars for 8 bytes hex string */
+        ESP_LOGE( TAG_PKT_FWD, "Gateway ID length should be 8 bytes (current hexstring contains %d chars) - %s", len,
+                  CONFIG_GATEWAY_ID_CUSTOM );
+        return -1;
+    }
+    lgwm = ( uint64_t ) strtoull( CONFIG_GATEWAY_ID_CUSTOM, NULL, 16 );
+    ESP_LOGI( TAG_PKT_FWD, "Gateway ID is set to CUSTOM (%s)", CONFIG_GATEWAY_ID_CUSTOM );
+#endif
+    ESP_LOGI( TAG_PKT_FWD, "Gateway ID: 0x%016llX", lgwm );
+
+    ESP_LOGI( TAG_PKT_FWD, "INFO: Auto-quit after %lu non-acknowledged PULL_DATA\n", autoquit_threshold );
 
     return 0;
 }

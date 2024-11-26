@@ -39,6 +39,7 @@ typedef enum
 
 #endif  // _PKTFWD_DEFS_H
 
+void set_user_led( bool on );
 void wait_on_error( lorahub_error_t error, int line );
 
 /* --- EOF ------------------------------------------------------------------ */

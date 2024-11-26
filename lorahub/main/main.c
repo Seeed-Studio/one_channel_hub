@@ -48,6 +48,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "main_defs.h"
 #include "config_nvs.h"
 
+#include "bleprph.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -82,13 +84,15 @@ volatile bool exit_sig = false; /* 1 -> application terminates cleanly (shut dow
 static char ntp_serv_addr[64] = CONFIG_SNTP_SERVER_ADDRESS; /* address of the SNTP server (host name or IPv4) */
 
 /* Board specific */
+#if CONFIG_WIFI_PROV_OVER_BLE
 static int user_button_pressed = 0; /* Number of time the user button has been pressed */
-
+#elif CONFIG_GET_CFG_FROM_FLASH
+static bool user_bleprph_switch = 0;
+#endif
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 static void configure_user_led( void );
-static void set_user_led( bool on );
 static void configure_user_button( void );
 
 /* -------------------------------------------------------------------------- */
@@ -115,7 +119,12 @@ void wait_on_error( lorahub_error_t error, int line )
 
 static void IRAM_ATTR gpio_interrupt_handler( void* args )
 {
+#if CONFIG_WIFI_PROV_OVER_BLE
     user_button_pressed += 1;
+#elif CONFIG_GET_CFG_FROM_FLASH
+    user_bleprph_switch = !user_bleprph_switch;
+    bleprph_adv_switch(user_bleprph_switch);
+#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -131,15 +140,6 @@ static void configure_user_led( void )
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-static void set_user_led( bool on )
-{
-#ifdef USER_LED_GPIO
-    gpio_set_level( USER_LED_GPIO, ( on == true ) ? 1 : 0 );
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 static void configure_user_button( void )
 {
     gpio_reset_pin( USER_BUTTON_GPIO );
@@ -148,6 +148,15 @@ static void configure_user_button( void )
 
     gpio_install_isr_service( 0 );
     gpio_isr_handler_add( USER_BUTTON_GPIO, gpio_interrupt_handler, NULL );
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void set_user_led( bool on )
+{
+#ifdef USER_LED_GPIO
+    gpio_set_level( USER_LED_GPIO, ( on == true ) ? 1 : 0 );
+#endif
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -182,6 +191,16 @@ void app_main( )
 
     /* threads */
     pthread_t thrid_display;
+
+    printf("                                                 \n");
+    printf(" #             ####          #   #  #   #  ####  \n");
+    printf(" #             #   #         #   #  #   #   #  # \n");
+    printf(" #       ###   #   #   ###   #   #  #   #   #  # \n");
+    printf(" #      #   #  ####       #  #####  #   #   ###  \n");
+    printf(" #      #   #  # #     ####  #   #  #   #   #  # \n");
+    printf(" #      #   #  #  #   #   #  #   #  #   #   #  # \n");
+    printf(" #####   ###   #   #   ####  #   #   ###   ####  \n");
+    printf("                                                 \n");
 
     /* display version informations */
     ESP_LOGI( TAG_MAIN, "*** LoRaHUB v%s ***", LORAHUB_FW_VERSION_STR );

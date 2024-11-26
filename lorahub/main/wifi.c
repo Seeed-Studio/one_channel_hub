@@ -33,6 +33,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "wifi.h"
 
+#include <nvs_flash.h>
+#include "config_nvs.h"
+#include "bleprph.h"
+#include "user_cmd.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -83,7 +88,9 @@ static const char sec2_verifier[] = {
     0x64, 0x9e, 0xde, 0x8c, 0xf6, 0x75, 0xa1, 0xe6, 0xf6, 0x53, 0xc8, 0x31, 0xa8, 0x78, 0xde, 0x50, 0x40, 0xf7, 0x62,
     0xde, 0x36, 0xb2, 0xba
 };
-
+#elif CONFIG_GET_CFG_FROM_FLASH
+static char wifi_ssid[64] = CONFIG_WIFI_SSID;
+static char wifi_password[64] = CONFIG_WIFI_PASSWORD;
 #endif  // CONFIG_WIFI_PROV_OVER_BLE
 
 static const char* TAG_WIFI = "wifi";
@@ -413,6 +420,64 @@ int wifi_sta_init( bool reset_provisioning )
         }
     }
 #else
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_WIFI_SSID,
+            .password = CONFIG_WIFI_PASSWORD,
+        },
+    };
+
+#ifdef CONFIG_GET_CFG_FROM_FLASH
+    bool config = user_cmd_init();
+    bleprph_init(config);
+    while( config )
+    {
+        vTaskDelay( 1000 / portTICK_PERIOD_MS );
+    }
+
+    ESP_LOGI( TAG_WIFI, "Get channel configuration from NVS" );
+
+    /* Get configuration from NVS */
+    printf( "Opening Non-Volatile Storage (NVS) handle for reading... " );
+    nvs_handle_t my_handle;
+    err = nvs_open( "storage", NVS_READONLY, &my_handle );
+    if( err != ESP_OK )
+    {
+        printf( "Error (%s) opening NVS handle!\n", esp_err_to_name( err ) );
+    }
+    else
+    {
+        printf( "Done\n" );
+
+        size_t size = 0;
+        size = sizeof( wifi_ssid );
+        err = nvs_get_str( my_handle, CFG_NVS_KEY_WIFI_SSID, wifi_ssid, &size );
+        if( err == ESP_OK )
+        {
+            printf( "NVS -> %s = %s\n", CFG_NVS_KEY_WIFI_SSID, wifi_ssid );
+            memcpy( wifi_config.sta.ssid, wifi_ssid, strlen( wifi_ssid ) );
+        }
+        else
+        {
+            printf( "Failed to get %s from NVS - %s\n", CFG_NVS_KEY_WIFI_SSID, esp_err_to_name( err ) );
+        }
+
+        size = sizeof( wifi_password );
+        err = nvs_get_str( my_handle, CFG_NVS_KEY_WIFI_PSWD, wifi_password, &size );
+        if( err == ESP_OK )
+        {
+            printf( "NVS -> %s = %s\n", CFG_NVS_KEY_WIFI_PSWD, wifi_password );
+            memcpy( wifi_config.sta.password, wifi_password, strlen( wifi_password ) );
+        }
+        else
+        {
+            printf( "Failed to get %s from NVS - %s\n", CFG_NVS_KEY_WIFI_PSWD, esp_err_to_name( err ) );
+        }
+    }
+    nvs_close( my_handle );
+    printf( "Closed NVS handle for reading.\n" );
+#endif
+
     /* Set WiFi Station mode (client) */
     err = esp_wifi_set_mode( WIFI_MODE_STA );
     if( err != ESP_OK )
@@ -421,12 +486,6 @@ int wifi_sta_init( bool reset_provisioning )
         return -1;
     }
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = CONFIG_WIFI_SSID,
-            .password = CONFIG_WIFI_PASSWORD,
-        },
-    };
     err = esp_wifi_set_config( WIFI_IF_STA, &wifi_config );
     if( err != ESP_OK )
     {

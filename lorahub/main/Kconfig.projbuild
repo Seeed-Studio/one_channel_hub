@@ -4,7 +4,7 @@ menu "Hardware Configuration"
 
     choice GATEWAY_HW_BOARD
         prompt "Board type"
-        default HELTEC_WIFI_LORA_32_V3
+        default SEEED_XIAO_ESP32S3_DEVKIT
         help
             Select the hardware board on which the LoRaHub is run (Semtech DevKit, Heltec WiFi LoRa 32 v3, ...).
         config SEMTECH_DEVKIT
@@ -23,7 +23,7 @@ menu "Hardware Configuration"
 
 	choice RADIO_TYPE
 		prompt "LoRa radio type"
-		default RADIO_TYPE_SX1262 if HELTEC_WIFI_LORA_32_V3
+		default RADIO_TYPE_SX1262 if SEEED_XIAO_ESP32S3_DEVKIT
 		help
 			Select the radio type used by the LoRaHub (sx1261, sx1262, sx1268, llcc68, lr1121).
 
@@ -55,7 +55,7 @@ menu "Hardware Configuration"
 
     config GATEWAY_DISPLAY
         bool "OLED Display"
-        default y
+        default n
         help
             Is there an OLED display connected ?
 
@@ -134,7 +134,7 @@ menu "WiFi Configuration"
 
     config WIFI_PROV_OVER_BLE
         bool "Enable WiFi provisionning over BLE"
-        default y
+        default n
         help
             The Gateway will initiate WiFi provisioning over BLE.
 

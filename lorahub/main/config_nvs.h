@@ -33,6 +33,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CFG_NVS_KEY_CHAN_DR "chan_dr"
 #define CFG_NVS_KEY_CHAN_BW "chan_bw"
 #define CFG_NVS_KEY_SNTP_ADDRESS "sntp_addr"
+#define CFG_NVS_KEY_GW_ID "gw_id"
+#define CFG_NVS_KEY_WIFI_SSID "wifi_id"
+#define CFG_NVS_KEY_WIFI_PSWD "wifi_pswd"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */

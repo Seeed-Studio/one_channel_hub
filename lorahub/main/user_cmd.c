@@ -24,8 +24,8 @@
 #define XXXX_CMD_GET_LEN    strlen(WIFI_CMD_CONFIG_GET)
 #define XXXX_CMD_SET_LEN    strlen(WIFI_CMD_CONFIG_SET)
 
-char *cmd_result_ok = "OK";
-char *cmd_result_err = "ERROR";
+char *cmd_result_ok = "\r\nOK\r\n";
+char *cmd_result_err = "\r\nERROR\r\n";
 
 static const char *TAG = "cmd";
 
@@ -45,6 +45,8 @@ static uint8_t wifi_status;
 
 #define WIFI_SCAN_RESULT_CNT_MAX  8
 wifi_info_t wifi_ap_scan[WIFI_SCAN_RESULT_CNT_MAX] = {0};
+
+static uint8_t cmd_rsp_buf[1024] = { 0 };
 
 static bool user_config_load(void)
 {
@@ -560,6 +562,7 @@ uint8_t wifi_scan(void)
     uint16_t ap_cnt = max_cnt;
 
     memset(ap_info, 0, sizeof(wifi_ap_record_t) * WIFI_SCAN_RESULT_CNT_MAX);
+    memset(wifi_ap_scan, 0, sizeof(wifi_info_t) * WIFI_SCAN_RESULT_CNT_MAX);
 
     ESP_GOTO_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), wifi_scan_end, TAG, "esp_wifi_set_mode failed");
     ESP_GOTO_ON_ERROR(esp_wifi_start(), wifi_scan_end, TAG, "esp_wifi_start failed");
@@ -619,13 +622,19 @@ static void user_cmd_proc_task(void *p_arg)
 
                 json_str = cJSON_PrintUnformatted(json);
                 cJSON_Delete(json);
-                ESP_LOGI(TAG, "%s", json_str);
-                bleprph_send_indicate((uint8_t *)json_str, strlen(json_str));
+                memset(cmd_rsp_buf, 0, sizeof(cmd_rsp_buf));
+                memcpy(cmd_rsp_buf, json_str, strlen(json_str));
+                memcpy(cmd_rsp_buf + strlen(json_str), cmd_result_ok, strlen(cmd_result_ok));
                 free(json_str);
+
+                ESP_LOGI(TAG, "%s", cmd_rsp_buf);
+                bleprph_send_indicate((uint8_t *)cmd_rsp_buf, strlen((char*)cmd_rsp_buf));
             }
             else if(strcmp((char *)(ble_msg.msg), WIFI_CMD_CONFIG_GET) == 0)
             {
                 user_config_load();
+
+                
 
                 char *json_str = NULL;
                 cJSON *json = cJSON_CreateObject();
@@ -634,12 +643,19 @@ static void user_cmd_proc_task(void *p_arg)
                 cJSON_AddItemToObject(json, "wifi_password", cJSON_CreateString(wifi_password));
                 wifi_status = wifi_get_status();
                 cJSON_AddItemToObject(json, "wifi_status", cJSON_CreateNumber(wifi_status));
+                int wifi_rssi = -128;
+                if(wifi_status == 1)esp_wifi_sta_get_rssi(&wifi_rssi); // connected
+                cJSON_AddItemToObject(json, "wifi_rssi", cJSON_CreateNumber(wifi_rssi));
 
                 json_str = cJSON_PrintUnformatted(json);
                 cJSON_Delete(json);
-                ESP_LOGI(TAG, "%s", json_str);
-                bleprph_send_indicate((uint8_t *)json_str, strlen(json_str));
+                memset(cmd_rsp_buf, 0, sizeof(cmd_rsp_buf));
+                memcpy(cmd_rsp_buf, json_str, strlen(json_str));
+                memcpy(cmd_rsp_buf + strlen(json_str), cmd_result_ok, strlen(cmd_result_ok));
                 free(json_str);
+
+                ESP_LOGI(TAG, "%s", cmd_rsp_buf);
+                bleprph_send_indicate((uint8_t *)cmd_rsp_buf, strlen((char*)cmd_rsp_buf));
             }
             else if(strcmp((char *)(ble_msg.msg), WIFI_CMD_SCAN_X_GET) == 0)
             {
@@ -660,9 +676,13 @@ static void user_cmd_proc_task(void *p_arg)
 
                     json_str = cJSON_PrintUnformatted(json);
                     cJSON_Delete(json);
-                    ESP_LOGI(TAG, "%s", json_str);
-                    bleprph_send_indicate((uint8_t *)json_str, strlen(json_str));
+                    memset(cmd_rsp_buf, 0, sizeof(cmd_rsp_buf));
+                    memcpy(cmd_rsp_buf, json_str, strlen(json_str));
+                    memcpy(cmd_rsp_buf + strlen(json_str), cmd_result_ok, strlen(cmd_result_ok));
                     free(json_str);
+
+                    ESP_LOGI(TAG, "%s", cmd_rsp_buf);
+                    bleprph_send_indicate((uint8_t *)cmd_rsp_buf, strlen((char*)cmd_rsp_buf));
                 } else {
                     ESP_LOGE(TAG, "wifi scan error");
                 }

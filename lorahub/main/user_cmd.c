@@ -48,6 +48,10 @@ wifi_info_t wifi_ap_scan[WIFI_SCAN_RESULT_CNT_MAX] = {0};
 
 static uint8_t cmd_rsp_buf[1024] = { 0 };
 
+static bool user_config_load(void);
+static esp_err_t user_wifi_config_save(void);
+static esp_err_t user_lora_config_save(void);
+
 static bool user_config_load(void)
 {
     esp_err_t err;
@@ -61,7 +65,33 @@ static bool user_config_load(void)
     if( err != ESP_OK )
     {   
         config_load = true;
-        printf( "Error (%s) opening NVS handle!\n", esp_err_to_name( err ) );
+        printf("Error (%s) opening NVS handle!\n", esp_err_to_name( err ));
+        printf("Save default NVS params:\n");
+#ifdef CONFIG_GATEWAY_ID_AUTO
+        uint8_t wifi_mac_addr[6] = {0};
+        wifi_get_mac_address( wifi_mac_addr );
+        gw_id = ( ( uint64_t )( wifi_mac_addr[0] ) << 56 ) | ( ( uint64_t )( wifi_mac_addr[1] ) << 48 ) |
+            ( ( uint64_t )( wifi_mac_addr[2] ) << 40 ) | ( ( uint64_t )( 0xFF ) << 32 );
+        gw_id |= ( ( uint64_t )( 0xFE ) << 24 ) | ( ( uint64_t )( wifi_mac_addr[3] ) << 16 ) |
+                ( ( uint64_t )( wifi_mac_addr[4] ) << 8 ) | ( ( uint64_t )( wifi_mac_addr[5] ) << 0 );
+#else
+        size_t len;
+        if(( len = strlen( CONFIG_GATEWAY_ID_CUSTOM )) == 16 )
+        {
+            gw_id = ( uint64_t ) strtoull( CONFIG_GATEWAY_ID_CUSTOM, NULL, 16 );
+        } else {
+            gw_id = 0x0;
+        }
+#endif
+        memset(lns_addr, 0, sizeof(lns_addr));
+        memcpy(lns_addr, CONFIG_NETWORK_SERVER_ADDRESS, strlen(CONFIG_NETWORK_SERVER_ADDRESS));
+        lns_port = CONFIG_NETWORK_SERVER_PORT;
+        memset(sntp_addr, 0, sizeof(sntp_addr));
+        memcpy(sntp_addr, CONFIG_SNTP_SERVER_ADDRESS, strlen(CONFIG_SNTP_SERVER_ADDRESS));
+        chan_freq = CONFIG_CHANNEL_FREQ_HZ;
+        chan_dr = CONFIG_CHANNEL_LORA_DATARATE;
+        chan_bw = CONFIG_CHANNEL_LORA_BANDWIDTH;
+        user_lora_config_save();
     }
     else
     {
@@ -633,8 +663,6 @@ static void user_cmd_proc_task(void *p_arg)
             else if(strcmp((char *)(ble_msg.msg), WIFI_CMD_CONFIG_GET) == 0)
             {
                 user_config_load();
-
-                
 
                 char *json_str = NULL;
                 cJSON *json = cJSON_CreateObject();

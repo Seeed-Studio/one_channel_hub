@@ -391,7 +391,7 @@ A JSON object as follows is expected:
 }
 ```
 
-## 3.8. Configure WiFi/LoRa through SenseCAP APP
+## 3.8. Configure WiFi/LoRa through SenseCraft APP
 
 Build with:
 
@@ -405,7 +405,11 @@ Usage:
 
 * enable/disable config through user button
 * bluetooth broadcast name by "GW-XIAO-ESP32S3"
-* connect through SenseCAP APP and config Wifi/LoRa
+* connect through SenseCraft APP and config Wifi/LoRa
+
+Wiki:
+
+* Coming soon ...
 
 # 4. Known limitations
 

@@ -455,6 +455,7 @@ int wifi_sta_init( bool reset_provisioning )
         if( err == ESP_OK )
         {
             printf( "NVS -> %s = %s\n", CFG_NVS_KEY_WIFI_SSID, wifi_ssid );
+            memset( wifi_config.sta.ssid, 0, sizeof(wifi_config.sta.ssid));
             memcpy( wifi_config.sta.ssid, wifi_ssid, strlen( wifi_ssid ) );
         }
         else
@@ -467,6 +468,7 @@ int wifi_sta_init( bool reset_provisioning )
         if( err == ESP_OK )
         {
             printf( "NVS -> %s = %s\n", CFG_NVS_KEY_WIFI_PSWD, wifi_password );
+            memset( wifi_config.sta.password, 0, sizeof(wifi_config.sta.password));
             memcpy( wifi_config.sta.password, wifi_password, strlen( wifi_password ) );
         }
         else
